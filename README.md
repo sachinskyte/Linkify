@@ -130,17 +130,6 @@ python auto_accept_connections.py
 2. Run the script to process and accept pending connection requests.
 3. The script logs details of accepted connections.
 
----
-
-## Contribution
-
-We welcome contributions from the community! Here's how you can get involved:
-
-1. **Fork the Repository**: Create your own copy by clicking the fork button at the top right of this page.
-2. **Make Changes**: Add new features, fix bugs, or enhance the documentation.
-3. **Submit a Pull Request**: Send your changes back to us by submitting a pull request.
-
-Please ensure your contributions adhere to the [code of conduct](./CODE_OF_CONDUCT.md).
 
 ---
 
@@ -168,5 +157,4 @@ For issues or questions, feel free to open an issue in this repository or contac
 
 ---
 
-Happy Automating! 🚀
 
