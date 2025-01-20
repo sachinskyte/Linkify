@@ -23,6 +23,18 @@ This repository provides a professional and efficient way to automate LinkedIn t
    - WebDriver Manager simplifies the handling of browser drivers.
    - Error handling is built in to manage unexpected issues, such as network delays or changes in LinkedIn's interface.
 
+---
+
+## Google Colab Integration
+
+For a much better viewing and execution experience, you can use the provided Google Colab notebook:
+
+[Run on Google Colab](https://colab.research.google.com/drive/19ZeOdAtX_dOJ3AXxbZ64NXwYnw1JpDbk?usp=sharing)
+
+This Colab notebook comes pre-configured to install dependencies and execute the automation scripts with minimal setup. Simply open the link and follow the instructions in the notebook.
+
+---
+
 ## Features
 
 - **Login Automation**: Automates LinkedIn login, including handling OTP verification.
