@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Connection Management</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Arial', sans-serif;
+        }
+
+        body {
+            background: linear-gradient(135deg, #1a1a1a 0%, #000000 100%);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            color: white;
+        }
+
+        .connections-container {
+            background: rgba(30, 30, 30, 0.85);
+            border-radius: 15px;
+            border: 2px solid #ff0000;
+            box-shadow: 
+                0 15px 35px rgba(255, 0, 0, 0.2), 
+                0 5px 15px rgba(255, 0, 0, 0.1);
+            width: 400px;
+            padding: 40px;
+            text-align: center;
+            transition: all 0.3s ease-in-out;
+        }
+
+        .connections-container:hover {
+            transform: scale(1.02) rotateX(3deg);
+        }
+
+        .connections-title {
+            color: #ff0000;
+            margin-bottom: 30px;
+            font-size: 2rem;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+        }
+
+        .connection-button {
+            width: 100%;
+            padding: 15px;
+            background: linear-gradient(45deg, #ff0000, #8B0000);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .connection-button:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 20px rgba(255, 0, 0, 0.4);
+        }
+
+        #result {
+            margin-top: 20px;
+            font-weight: bold;
+            color: #ff0000;
+        }
+    </style>
+</head>
+<body>
+    <div class="connections-container">
+        <h2 class="connections-title">Connection Manager</h2>
+        <button id="acceptConnectionsBtn" class="connection-button">Process Connections</button>
+        <div id="result"></div>
+    </div>
+
+    <script>
+        document.getElementById('acceptConnectionsBtn').addEventListener('click', function() {
+            this.disabled = true;
+            this.textContent = 'Processing...';
+            
+            fetch('/connections', {
+                method: 'POST'
+            })
+            .then(response => response.json())
+            .then(data => {
+                const resultDiv = document.getElementById('result');
+                if (data.success) {
+                    resultDiv.textContent = 'Connections processed successfully!';
+                } else {
+                    resultDiv.textContent = 'Failed to process connections.';
+                }
+                this.disabled = false;
+                this.textContent = 'Process Connections';
+            })
+            .catch(error => {
+                document.getElementById('result').textContent = 'Error: ' + error;
+                this.disabled = false;
+                this.textContent = 'Process Connections';
+            });
+        });
+    </script>
+</body>
+</html>

