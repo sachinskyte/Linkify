@@ -11,7 +11,7 @@
             box-sizing: border-box;
             font-family: 'Arial', sans-serif;
         }
-
+        
         body {
             background: linear-gradient(135deg, #1a1a1a 0%, #000000 100%);
             display: flex;
@@ -20,24 +20,24 @@
             min-height: 100vh;
             color: white;
         }
-
+        
         .connections-container {
             background: rgba(30, 30, 30, 0.85);
             border-radius: 15px;
             border: 2px solid #ff0000;
             box-shadow: 
-                0 15px 35px rgba(255, 0, 0, 0.2), 
+                0 15px 35px rgba(255, 0, 0, 0.2),
                 0 5px 15px rgba(255, 0, 0, 0.1);
             width: 400px;
             padding: 40px;
             text-align: center;
             transition: all 0.3s ease-in-out;
         }
-
+        
         .connections-container:hover {
             transform: scale(1.02) rotateX(3deg);
         }
-
+        
         .connections-title {
             color: #ff0000;
             margin-bottom: 30px;
@@ -45,7 +45,7 @@
             text-transform: uppercase;
             letter-spacing: 2px;
         }
-
+        
         .connection-button {
             width: 100%;
             padding: 15px;
@@ -58,15 +58,30 @@
             text-transform: uppercase;
             letter-spacing: 1px;
         }
-
+        
         .connection-button:hover {
             transform: translateY(-5px);
             box-shadow: 0 10px 20px rgba(255, 0, 0, 0.4);
         }
-
+        
+        .connection-button:disabled {
+            background: #666;
+            cursor: not-allowed;
+            transform: none;
+            box-shadow: none;
+        }
+        
         #result {
             margin-top: 20px;
             font-weight: bold;
+            color: #ff0000;
+            min-height: 20px;
+        }
+
+        .logout-button {
+            margin-top: 20px;
+            background: transparent;
+            border: 2px solid #ff0000;
             color: #ff0000;
         }
     </style>
@@ -75,32 +90,40 @@
     <div class="connections-container">
         <h2 class="connections-title">Connection Manager</h2>
         <button id="acceptConnectionsBtn" class="connection-button">Process Connections</button>
+        <button onclick="window.location.href='/'" class="connection-button logout-button">Logout</button>
         <div id="result"></div>
     </div>
-
+    
     <script>
         document.getElementById('acceptConnectionsBtn').addEventListener('click', function() {
-            this.disabled = true;
-            this.textContent = 'Processing...';
+            const button = this;
+            const resultDiv = document.getElementById('result');
             
-            fetch('/connections', {
-                method: 'POST'
+            button.disabled = true;
+            button.textContent = 'Processing...';
+            resultDiv.textContent = 'Processing connection requests...';
+            
+            fetch('/process-connections', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                }
             })
             .then(response => response.json())
             .then(data => {
-                const resultDiv = document.getElementById('result');
-                if (data.success) {
-                    resultDiv.textContent = 'Connections processed successfully!';
-                } else {
-                    resultDiv.textContent = 'Failed to process connections.';
+                resultDiv.textContent = data.message;
+                button.disabled = false;
+                button.textContent = 'Process Connections';
+                
+                if (data.redirect) {
+                    window.location.href = data.redirect;
                 }
-                this.disabled = false;
-                this.textContent = 'Process Connections';
             })
             .catch(error => {
-                document.getElementById('result').textContent = 'Error: ' + error;
-                this.disabled = false;
-                this.textContent = 'Process Connections';
+                resultDiv.textContent = 'Error: Failed to process connections. Please try again.';
+                button.disabled = false;
+                button.textContent = 'Process Connections';
+                console.error('Error:', error);
             });
         });
     </script>
