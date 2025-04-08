@@ -1,131 +1,858 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <title>Connection Management</title>
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-            font-family: 'Arial', sans-serif;
-        }
-        
-        body {
-            background: linear-gradient(135deg, #1a1a1a 0%, #000000 100%);
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            min-height: 100vh;
-            color: white;
-        }
-        
-        .connections-container {
-            background: rgba(30, 30, 30, 0.85);
-            border-radius: 15px;
-            border: 2px solid #ff0000;
-            box-shadow: 
-                0 15px 35px rgba(255, 0, 0, 0.2),
-                0 5px 15px rgba(255, 0, 0, 0.1);
-            width: 400px;
-            padding: 40px;
-            text-align: center;
-            transition: all 0.3s ease-in-out;
-        }
-        
-        .connections-container:hover {
-            transform: scale(1.02) rotateX(3deg);
-        }
-        
-        .connections-title {
-            color: #ff0000;
-            margin-bottom: 30px;
-            font-size: 2rem;
-            text-transform: uppercase;
-            letter-spacing: 2px;
-        }
-        
-        .connection-button {
-            width: 100%;
-            padding: 15px;
-            background: linear-gradient(45deg, #ff0000, #8B0000);
-            color: white;
-            border: none;
-            border-radius: 8px;
-            cursor: pointer;
-            transition: all 0.3s ease;
-            text-transform: uppercase;
-            letter-spacing: 1px;
-        }
-        
-        .connection-button:hover {
-            transform: translateY(-5px);
-            box-shadow: 0 10px 20px rgba(255, 0, 0, 0.4);
-        }
-        
-        .connection-button:disabled {
-            background: #666;
-            cursor: not-allowed;
-            transform: none;
-            box-shadow: none;
-        }
-        
-        #result {
-            margin-top: 20px;
-            font-weight: bold;
-            color: #ff0000;
-            min-height: 20px;
-        }
+{% extends "base.html" %}
 
-        .logout-button {
-            margin-top: 20px;
-            background: transparent;
-            border: 2px solid #ff0000;
-            color: #ff0000;
-        }
-    </style>
-</head>
-<body>
-    <div class="connections-container">
-        <h2 class="connections-title">Connection Manager</h2>
-        <button id="acceptConnectionsBtn" class="connection-button">Process Connections</button>
-        <button onclick="window.location.href='/'" class="connection-button logout-button">Logout</button>
-        <div id="result"></div>
+{% block title %}Connection Manager - Linkify{% endblock %}
+
+{% block content %}
+<div class="card">
+    <h2 class="card-title">Connection Manager</h2>
+    <p class="connections-subtitle">Automate your LinkedIn connection requests</p>
+    
+    <div class="stats-overview">
+        <div class="stat-card total">
+            <div class="stat-value" id="totalConnections">0</div>
+            <div class="stat-label">Total Connections</div>
+        </div>
+        <div class="stat-card accepted">
+            <div class="stat-value" id="acceptedConnections">0</div>
+            <div class="stat-label">Connections Accepted</div>
+        </div>
+        <div class="stat-card rate">
+            <div class="stat-value" id="acceptanceRate">0%</div>
+            <div class="stat-label">Acceptance Rate</div>
+        </div>
     </div>
     
-    <script>
-        document.getElementById('acceptConnectionsBtn').addEventListener('click', function() {
-            const button = this;
-            const resultDiv = document.getElementById('result');
-            
-            button.disabled = true;
-            button.textContent = 'Processing...';
-            resultDiv.textContent = 'Processing connection requests...';
-            
-            fetch('/process-connections', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json'
-                }
-            })
-            .then(response => response.json())
-            .then(data => {
-                resultDiv.textContent = data.message;
-                button.disabled = false;
-                button.textContent = 'Process Connections';
+    <div class="dashboard-charts">
+        <div class="chart-container">
+            <canvas id="connectionsChart"></canvas>
+        </div>
+        <div class="chart-container">
+            <canvas id="rateChart"></canvas>
+        </div>
+    </div>
+    
+    <div class="dashboard">
+        <div class="dashboard-stat">
+            <i class="fas fa-user-plus dashboard-icon"></i>
+            <div class="dashboard-value">
+                <span id="connectionsCount">-</span>
+            </div>
+            <div class="dashboard-label">Pending Requests</div>
+        </div>
+        
+        <div class="dashboard-stat">
+            <i class="fas fa-history dashboard-icon"></i>
+            <div class="dashboard-value">
+                <span id="processedCount">0</span>
+            </div>
+            <div class="dashboard-label">Processed Today</div>
+        </div>
+    </div>
+    
+    <div id="pendingPreview" class="pending-preview">
+        <h3>Pending Connection Requests</h3>
+        <div class="pending-count">
+            <span id="pendingCount">0</span> pending requests to process
+        </div>
+        <div class="pending-progress">
+            <div class="progress-bar">
+                <div class="progress-fill" id="progressFill"></div>
+            </div>
+            <div class="progress-labels">
+                <span>0</span>
+                <span id="pendingMaxCount">50</span>
+            </div>
+        </div>
+    </div>
+    
+    <div class="action-panel">
+        <h3><i class="fas fa-tasks"></i> Actions</h3>
+        <div class="action-content">
+            <p>Click the button below to process your LinkedIn connection requests:</p>
+            <button id="acceptConnectionsBtn" class="action-btn"><i class="fas fa-check-circle"></i> Process Connections</button>
+            <div id="result" class="result-message"></div>
+        </div>
+    </div>
+    
+    <div class="activity-log">
+        <h3 class="activity-title">Activity Log</h3>
+        <div id="activityLog" class="log-container">
+            <div class="log-entry">
+                <span class="log-time">Just now</span>
+                <span class="log-message">Ready to process connection requests</span>
+            </div>
+        </div>
+    </div>
+    
+    <div class="status-panel">
+        <div class="status-indicator">
+            <div class="status-dot"></div>
+            <span class="status-text">Ready</span>
+        </div>
+        <div class="status-message">System is ready to process your connection requests</div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_css %}
+<style>
+    .connections-subtitle {
+        color: var(--accent-grey);
+        margin-bottom: 25px;
+    }
+    
+    .stats-overview {
+        display: flex;
+        flex-direction: column;
+        gap: 15px;
+        margin-bottom: 30px;
+    }
+    
+    .stat-card {
+        padding: 20px;
+        border-radius: var(--border-radius-sm);
+        text-align: center;
+        background: rgba(0, 0, 0, 0.3);
+        box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
+    }
+    
+    .stat-card.total {
+        border-left: 4px solid #4CAF50;
+    }
+    
+    .stat-card.accepted {
+        border-left: 4px solid var(--primary-red);
+    }
+    
+    .stat-card.rate {
+        border-left: 4px solid #FFA500;
+    }
+    
+    .stat-value {
+        font-size: 2.2rem;
+        font-weight: 700;
+        margin-bottom: 5px;
+    }
+    
+    .stat-label {
+        color: var(--accent-grey);
+        font-size: 0.9rem;
+        text-transform: uppercase;
+        letter-spacing: 1px;
+    }
+    
+    .dashboard-charts {
+        display: flex;
+        flex-direction: column;
+        gap: 30px;
+        margin-bottom: 30px;
+    }
+    
+    .chart-container {
+        height: 250px;
+        position: relative;
+        background: rgba(0, 0, 0, 0.2);
+        border-radius: var(--border-radius-sm);
+        padding: 15px;
+    }
+    
+    .dashboard {
+        display: flex;
+        flex-direction: column;
+        gap: 20px;
+        margin-bottom: 30px;
+    }
+    
+    .dashboard-stat {
+        text-align: center;
+        padding: 20px;
+        background: rgba(0, 0, 0, 0.3);
+        border-radius: var(--border-radius-md);
+        transition: transform 0.3s ease;
+    }
+    
+    .dashboard-stat:hover {
+        transform: translateY(-5px);
+    }
+    
+    .dashboard-icon {
+        font-size: 2.5rem;
+        color: var(--primary-red);
+        margin-bottom: 15px;
+    }
+    
+    .dashboard-value {
+        font-size: 2rem;
+        font-weight: 700;
+        margin-bottom: 5px;
+    }
+    
+    .dashboard-label {
+        font-size: 0.9rem;
+        color: var(--accent-grey);
+        text-transform: uppercase;
+        letter-spacing: 1px;
+    }
+    
+    .pending-preview {
+        background: rgba(0, 0, 0, 0.2);
+        border-radius: var(--border-radius-sm);
+        padding: 20px;
+        margin-bottom: 30px;
+    }
+    
+    .pending-preview h3 {
+        color: var(--primary-red);
+        font-size: 1.2rem;
+        margin-bottom: 15px;
+    }
+    
+    .pending-count {
+        font-size: 1.1rem;
+        margin-bottom: 15px;
+    }
+    
+    .pending-count span {
+        font-weight: 700;
+        color: var(--primary-red);
+    }
+    
+    .pending-progress {
+        margin-bottom: 10px;
+    }
+    
+    .progress-bar {
+        height: 10px;
+        background: rgba(255, 255, 255, 0.1);
+        border-radius: 5px;
+        overflow: hidden;
+        margin-bottom: 5px;
+    }
+    
+    .progress-fill {
+        height: 100%;
+        background: var(--gradient-red);
+        width: 0%;
+        transition: width 0.3s ease;
+    }
+    
+    .progress-labels {
+        display: flex;
+        justify-content: space-between;
+        font-size: 0.8rem;
+        color: var(--accent-grey);
+    }
+    
+    .action-panel {
+        display: flex;
+        flex-direction: column;
+        gap: 15px;
+        margin-bottom: 25px;
+    }
+    
+    .activity-log {
+        margin: 30px 0;
+        text-align: left;
+    }
+    
+    .activity-title {
+        color: var(--primary-red);
+        font-size: 1.2rem;
+        margin-bottom: 10px;
+        border-bottom: 1px solid rgba(229, 9, 20, 0.3);
+        padding-bottom: 5px;
+    }
+    
+    .log-container {
+        max-height: 150px;
+        overflow-y: auto;
+        background: rgba(0, 0, 0, 0.3);
+        border-radius: var(--border-radius-sm);
+        padding: 10px;
+    }
+    
+    .log-entry {
+        padding: 5px 0;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        font-size: 0.9rem;
+    }
+    
+    .log-entry:last-child {
+        border-bottom: none;
+    }
+    
+    .log-time {
+        color: var(--accent-grey);
+        margin-right: 10px;
+        font-size: 0.8rem;
+    }
+    
+    .status-panel {
+        margin-top: 25px;
+        padding: 15px;
+        background: rgba(0, 0, 0, 0.3);
+        border-radius: var(--border-radius-sm);
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+    }
+    
+    .status-indicator {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+    }
+    
+    .status-dot {
+        width: 12px;
+        height: 12px;
+        background-color: #4CAF50;
+        border-radius: 50%;
+        animation: pulse 2s infinite;
+    }
+    
+    .status-text {
+        font-weight: 600;
+        color: #4CAF50;
+    }
+    
+    .status-message {
+        font-size: 0.9rem;
+        color: var(--accent-grey);
+    }
+    
+    @keyframes spin {
+        0% { transform: rotate(0deg); }
+        100% { transform: rotate(360deg); }
+    }
+    
+    .loading-spinner {
+        display: inline-block;
+        width: 20px;
+        height: 20px;
+        border: 3px solid rgba(255,255,255,.3);
+        border-radius: 50%;
+        border-top-color: var(--accent-light);
+        animation: spin 1s ease-in-out infinite;
+        margin-right: 10px;
+    }
+    
+    @media (min-width: 768px) {
+        .stats-overview {
+            flex-direction: row;
+            justify-content: space-between;
+        }
+        
+        .stat-card {
+            flex: 1;
+        }
+        
+        .dashboard-charts {
+            flex-direction: row;
+        }
+        
+        .chart-container {
+            flex: 1;
+        }
+        
+        .dashboard {
+            flex-direction: row;
+            justify-content: space-around;
+        }
+        
+        .action-panel {
+            flex-direction: row;
+            justify-content: center;
+            gap: 30px;
+        }
+        
+        .action-panel .btn {
+            max-width: 250px;
+        }
+    }
+</style>
+{% endblock %}
+
+{% block extra_js %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+    // Initialize Chart.js
+    Chart.defaults.color = '#ffffff';
+    Chart.defaults.borderColor = 'rgba(255, 255, 255, 0.1)';
+    
+    // Connection statistics
+    let connectionStats = {
+        total: 0,
+        accepted: 0,
+        pending: 0,
+        history: [
+            { date: '1 week ago', pending: 0, accepted: 0 },
+            { date: '6 days ago', pending: 0, accepted: 0 },
+            { date: '5 days ago', pending: 0, accepted: 0 },
+            { date: '4 days ago', pending: 0, accepted: 0 },
+            { date: '3 days ago', pending: 0, accepted: 0 },
+            { date: '2 days ago', pending: 0, accepted: 0 },
+            { date: 'Yesterday', pending: 0, accepted: 0 },
+            { date: 'Today', pending: 0, accepted: 0 }
+        ]
+    };
+    
+    // Fetch connection stats from the server
+    addLogEntry('Fetching connection statistics...');
+    fetch('/connection-stats')
+        .then(response => {
+            if (!response.ok) {
+                throw new Error('Failed to fetch connection statistics');
+            }
+            return response.json();
+        })
+        .then(data => {
+            if (data.success) {
+                // Update stats
+                connectionStats.total = data.total;
+                connectionStats.pending = data.pending;
                 
-                if (data.redirect) {
-                    window.location.href = data.redirect;
+                // Update history if available
+                if (data.history && data.history.length > 0) {
+                    connectionStats.history = data.history;
+                } else {
+                    // Just update today's pending
+                    connectionStats.history[connectionStats.history.length - 1].pending = data.pending;
                 }
-            })
-            .catch(error => {
-                resultDiv.textContent = 'Error: Failed to process connections. Please try again.';
-                button.disabled = false;
-                button.textContent = 'Process Connections';
-                console.error('Error:', error);
-            });
+                
+                // Update UI
+                updateConnectionsUI();
+                addLogEntry(`Found ${data.pending} pending connection requests`);
+            } else {
+                // Show some default data
+                connectionStats.total = Math.floor(Math.random() * 500) + 100;
+                connectionStats.pending = Math.floor(Math.random() * 20) + 5;
+                connectionStats.history[connectionStats.history.length - 1].pending = connectionStats.pending;
+                
+                updateConnectionsUI();
+                addLogEntry('Using demo data - could not fetch real statistics');
+            }
+        })
+        .catch(error => {
+            console.error('Error fetching stats:', error);
+            
+            // Use default data on error
+            connectionStats.total = Math.floor(Math.random() * 500) + 100;
+            connectionStats.pending = Math.floor(Math.random() * 20) + 5;
+            connectionStats.history[connectionStats.history.length - 1].pending = connectionStats.pending;
+            
+            updateConnectionsUI();
+            addLogEntry('Error fetching connection data - using demo values');
         });
-    </script>
-</body>
-</html>
+    
+    // Function to update all UI elements with connection stats
+    function updateConnectionsUI() {
+        // Update main stats
+        document.getElementById('totalConnections').textContent = connectionStats.total;
+        document.getElementById('connectionsCount').textContent = connectionStats.pending;
+        document.getElementById('pendingCount').textContent = connectionStats.pending;
+        
+        // Calculate totals for acceptance rate
+        const totalPending = connectionStats.history.reduce((acc, day) => acc + day.pending, 0);
+        const totalAccepted = connectionStats.history.reduce((acc, day) => acc + day.accepted, 0);
+        document.getElementById('acceptedConnections').textContent = totalAccepted;
+        
+        // Calculate acceptance rate
+        const acceptanceRate = totalPending > 0 ? Math.round((totalAccepted / totalPending) * 100) : 0;
+        document.getElementById('acceptanceRate').textContent = acceptanceRate + '%';
+        
+        // Update progress bar
+        const pendingMaxCount = 50; // Maximum scale for progress bar
+        document.getElementById('pendingMaxCount').textContent = pendingMaxCount;
+        document.getElementById('progressFill').style.width = (connectionStats.pending / pendingMaxCount * 100) + '%';
+        
+        // Create/update connections chart
+        updateConnectionsChart();
+        
+        // Create/update rate chart
+        updateRateChart(acceptanceRate);
+    }
+    
+    // Create connections chart
+    function updateConnectionsChart() {
+        const connectionsCtx = document.getElementById('connectionsChart').getContext('2d');
+        
+        // Check if chart already exists and destroy it
+        if (window.connectionsChart) {
+            window.connectionsChart.destroy();
+        }
+        
+        window.connectionsChart = new Chart(connectionsCtx, {
+            type: 'bar',
+            data: {
+                labels: connectionStats.history.map(day => day.date),
+                datasets: [{
+                    label: 'Pending',
+                    data: connectionStats.history.map(day => day.pending),
+                    backgroundColor: 'rgba(255, 165, 0, 0.7)',
+                    borderColor: 'rgba(255, 165, 0, 1)',
+                    borderWidth: 1
+                }, {
+                    label: 'Accepted',
+                    data: connectionStats.history.map(day => day.accepted),
+                    backgroundColor: 'rgba(229, 9, 20, 0.7)',
+                    borderColor: 'rgba(229, 9, 20, 1)',
+                    borderWidth: 1
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    title: {
+                        display: true,
+                        text: 'Connection Activity (Last 7 Days)',
+                        font: {
+                            size: 16
+                        }
+                    },
+                    legend: {
+                        position: 'top'
+                    }
+                },
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        ticks: {
+                            precision: 0
+                        }
+                    }
+                }
+            }
+        });
+    }
+    
+    // Create rate chart
+    function updateRateChart(acceptanceRate) {
+        const rateCtx = document.getElementById('rateChart').getContext('2d');
+        
+        // Check if chart already exists and destroy it
+        if (window.rateChart) {
+            window.rateChart.destroy();
+        }
+        
+        window.rateChart = new Chart(rateCtx, {
+            type: 'doughnut',
+            data: {
+                labels: ['Accepted', 'Missed'],
+                datasets: [{
+                    data: [acceptanceRate, 100 - acceptanceRate],
+                    backgroundColor: [
+                        'rgba(229, 9, 20, 0.8)',
+                        'rgba(70, 70, 70, 0.8)'
+                    ],
+                    borderColor: [
+                        'rgba(229, 9, 20, 1)',
+                        'rgba(70, 70, 70, 1)'
+                    ],
+                    borderWidth: 1
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    title: {
+                        display: true,
+                        text: 'Connection Acceptance Rate',
+                        font: {
+                            size: 16
+                        }
+                    },
+                    legend: {
+                        position: 'top'
+                    }
+                }
+            }
+        });
+    }
+    
+    const statusDot = document.querySelector('.status-dot');
+    const statusText = document.querySelector('.status-text');
+    const statusMessage = document.querySelector('.status-message');
+    const connectionsCount = document.getElementById('connectionsCount');
+    const processedCount = document.getElementById('processedCount');
+    const activityLog = document.getElementById('activityLog');
+    
+    // Add log entry function
+    function addLogEntry(message) {
+        const now = new Date();
+        const timeStr = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+        
+        const entry = document.createElement('div');
+        entry.className = 'log-entry';
+        entry.innerHTML = `<span class="log-time">${timeStr}</span><span class="log-message">${message}</span>`;
+        
+        activityLog.prepend(entry);
+        
+        // Limit log entries to 10
+        const entries = activityLog.querySelectorAll('.log-entry');
+        if (entries.length > 10) {
+            entries[entries.length - 1].remove();
+        }
+    }
+    
+    // Set initial log
+    addLogEntry('Page loaded and ready');
+    addLogEntry(`Found ${connectionStats.pending} pending connection requests`);
+    
+    document.getElementById('acceptConnectionsBtn').addEventListener('click', function() {
+        const button = this;
+        const resultDiv = document.getElementById('result');
+        
+        // First, check if we need to fetch real-time pending connections
+        if (button.dataset.state === 'confirm') {
+            // User confirmed, proceed with processing
+            button.dataset.state = 'processing';
+            processConnections(button, resultDiv);
+        } else {
+            // First click - check pending connections and ask for confirmation
+            button.disabled = true;
+            button.innerHTML = '<div class="loading-spinner"></div> Checking...';
+            
+            // Show checking status
+            statusDot.style.backgroundColor = '#FFA500';
+            statusText.textContent = 'Checking';
+            statusText.style.color = '#FFA500';
+            statusMessage.textContent = 'Checking for pending connection requests...';
+            
+            resultDiv.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Checking for pending connections...';
+            
+            // Add log entry
+            addLogEntry('Checking for pending connection requests...');
+            
+            // Get fresh connection stats
+            fetch('/connection-stats')
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error('Network response was not ok');
+                    }
+                    return response.json();
+                })
+                .then(data => {
+                    if (data.success) {
+                        // Update pending count
+                        const pendingCount = data.pending;
+                        connectionStats.pending = pendingCount;
+                        document.getElementById('connectionsCount').textContent = pendingCount;
+                        document.getElementById('pendingCount').textContent = pendingCount;
+                        document.getElementById('progressFill').style.width = (pendingCount / pendingMaxCount * 100) + '%';
+                        
+                        if (pendingCount > 0) {
+                            // Show confirmation button
+                            resultDiv.innerHTML = `<i class="fas fa-info-circle"></i> Found <strong>${pendingCount}</strong> pending connection requests. Click the button again to process them.`;
+                            button.innerHTML = `<i class="fas fa-check-double"></i> Process ${pendingCount} Connections`;
+                            button.disabled = false;
+                            button.dataset.state = 'confirm';
+                            button.classList.add('btn-confirm');
+                            
+                            // Update status
+                            statusDot.style.backgroundColor = '#FFA500';
+                            statusText.textContent = 'Ready';
+                            statusText.style.color = '#FFA500';
+                            statusMessage.textContent = `Found ${pendingCount} connection requests waiting to be processed`;
+                            
+                            // Add log entry
+                            addLogEntry(`Found ${pendingCount} pending connection requests`);
+                        } else {
+                            // No pending connections
+                            resultDiv.innerHTML = '<i class="fas fa-check-circle"></i> No pending connection requests found.';
+                            button.innerHTML = '<i class="fas fa-check-circle"></i> No Pending Requests';
+                            button.disabled = true;
+                            
+                            // Update status
+                            statusDot.style.backgroundColor = '#4CAF50';
+                            statusText.textContent = 'Completed';
+                            statusText.style.color = '#4CAF50';
+                            statusMessage.textContent = 'No pending connection requests to process.';
+                            
+                            // Add log entry
+                            addLogEntry('No pending connection requests found');
+                            
+                            // Reset button after 5 seconds
+                            setTimeout(() => {
+                                button.innerHTML = '<i class="fas fa-sync"></i> Check Again';
+                                button.disabled = false;
+                                delete button.dataset.state;
+                                button.classList.remove('btn-confirm');
+                            }, 5000);
+                        }
+                    } else {
+                        // Error in the API response
+                        resultDiv.innerHTML = '<i class="fas fa-exclamation-circle"></i> ' + (data.message || 'Could not check connections');
+                        button.innerHTML = '<i class="fas fa-sync"></i> Try Again';
+                        button.disabled = false;
+                        
+                        // Update status
+                        statusDot.style.backgroundColor = '#FF0000';
+                        statusText.textContent = 'Error';
+                        statusText.style.color = '#FF0000';
+                        statusMessage.textContent = 'Could not check for pending connection requests.';
+                        
+                        // Add log entry
+                        addLogEntry('Error: ' + (data.message || 'Could not check connections'));
+                    }
+                })
+                .catch(error => {
+                    resultDiv.innerHTML = '<i class="fas fa-exclamation-triangle"></i> Error: Failed to check connections. Please try again.';
+                    button.innerHTML = '<i class="fas fa-sync"></i> Try Again';
+                    button.disabled = false;
+                    
+                    // Update status
+                    statusDot.style.backgroundColor = '#FF0000';
+                    statusText.textContent = 'Error';
+                    statusText.style.color = '#FF0000';
+                    statusMessage.textContent = 'Connection to server failed. Please check your internet connection.';
+                    
+                    // Add log entry
+                    addLogEntry('Network error: Failed to connect to server');
+                    console.error('Error:', error);
+                });
+        }
+    });
+    
+    function processConnections(button, resultDiv) {
+        button.disabled = true;
+        button.innerHTML = '<div class="loading-spinner"></div> Processing...';
+        
+        // Update status
+        statusDot.style.backgroundColor = '#FFA500';
+        statusText.textContent = 'Processing';
+        statusText.style.color = '#FFA500';
+        statusMessage.textContent = 'Accepting connection requests on LinkedIn...';
+        
+        resultDiv.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Processing connection requests...';
+        
+        // Add log entry
+        addLogEntry('Processing connection requests...');
+        
+        fetch('/process-connections', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            }
+        })
+        .then(response => {
+            if (!response.ok) {
+                throw new Error('Network response was not ok');
+            }
+            return response.json();
+        })
+        .then(data => {
+            if (data.success) {
+                resultDiv.innerHTML = '<i class="fas fa-check-circle"></i> ' + data.message;
+                resultDiv.style.color = '#4CAF50';
+                
+                // Update status
+                statusDot.style.backgroundColor = '#4CAF50';
+                statusText.textContent = 'Completed';
+                statusText.style.color = '#4CAF50';
+                statusMessage.textContent = 'All connection requests have been processed successfully!';
+                
+                // Update connections count
+                const match = data.message.match(/(\d+)/);
+                if (match) {
+                    const processed = parseInt(match[1], 10);
+                    processedCount.textContent = processed;
+                    
+                    // Update today's data in history
+                    connectionStats.history[connectionStats.history.length - 1].accepted = processed;
+                    
+                    // Update charts
+                    updateConnectionsChart();
+                    
+                    // Update stats
+                    const newTotalAccepted = connectionStats.history.reduce((acc, day) => acc + day.accepted, 0);
+                    document.getElementById('acceptedConnections').textContent = newTotalAccepted;
+                    
+                    // Calculate new acceptance rate
+                    const totalPending = connectionStats.history.reduce((acc, day) => acc + day.pending, 0);
+                    const newAcceptanceRate = totalPending > 0 ? Math.round((newTotalAccepted / totalPending) * 100) : 0;
+                    document.getElementById('acceptanceRate').textContent = newAcceptanceRate + '%';
+                    
+                    // Update rate chart
+                    updateRateChart(newAcceptanceRate);
+                    
+                    const remaining = Math.max(0, parseInt(connectionsCount.textContent) - processed);
+                    connectionsCount.textContent = remaining;
+                    document.getElementById('pendingCount').textContent = remaining;
+                    document.getElementById('progressFill').style.width = (remaining / pendingMaxCount * 100) + '%';
+                    
+                    // Add log entry
+                    addLogEntry(`Processed ${processed} connection requests`);
+                }
+                
+                // Reset button after 3 seconds
+                setTimeout(() => {
+                    button.innerHTML = '<i class="fas fa-sync"></i> Check Again';
+                    button.disabled = false;
+                    delete button.dataset.state;
+                    button.classList.remove('btn-confirm');
+                }, 3000);
+                
+            } else {
+                resultDiv.innerHTML = '<i class="fas fa-exclamation-circle"></i> ' + data.message;
+                
+                // Update status
+                statusDot.style.backgroundColor = '#FF0000';
+                statusText.textContent = 'Error';
+                statusText.style.color = '#FF0000';
+                statusMessage.textContent = 'An error occurred while processing connection requests.';
+                
+                // Add log entry
+                addLogEntry(`Error: ${data.message}`);
+                
+                // Reset button
+                button.innerHTML = '<i class="fas fa-sync"></i> Try Again';
+                button.disabled = false;
+                delete button.dataset.state;
+                button.classList.remove('btn-confirm');
+            }
+            
+            if (data.redirect) {
+                addLogEntry('Redirecting to login...');
+                window.location.href = data.redirect;
+            }
+        })
+        .catch(error => {
+            resultDiv.innerHTML = '<i class="fas fa-exclamation-triangle"></i> Error: Failed to process connections. Please try again.';
+            
+            // Update status
+            statusDot.style.backgroundColor = '#FF0000';
+            statusText.textContent = 'Error';
+            statusText.style.color = '#FF0000';
+            statusMessage.textContent = 'Connection to server failed. Please check your internet connection.';
+            
+            // Add log entry
+            addLogEntry('Network error: Failed to connect to server');
+            
+            // Reset button
+            button.innerHTML = '<i class="fas fa-sync"></i> Try Again';
+            button.disabled = false;
+            delete button.dataset.state;
+            button.classList.remove('btn-confirm');
+            
+            console.error('Error:', error);
+        });
+    }
+    
+    // Check session active status periodically
+    function checkSession() {
+        fetch('/check-session', {
+            method: 'GET'
+        })
+        .then(response => response.json())
+        .catch(error => {
+            console.error('Session check failed:', error);
+        });
+    }
+    
+    // Check session every 5 minutes
+    setInterval(checkSession, 300000);
+</script>
+{% endblock %}

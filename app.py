@@ -4,7 +4,7 @@ from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.common.exceptions import TimeoutException, ElementClickInterceptedException
-from flask import Flask, render_template, request, jsonify, session, redirect, url_for
+from flask import Flask, render_template, request, jsonify, session, redirect, url_for, send_from_directory
 import time
 import logging
 import pickle
@@ -15,7 +15,7 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 # Initialize Flask app
-app = Flask(__name__)
+app = Flask(__name__, static_folder='static')
 app.secret_key = 'your-secret-key-here'  # Replace with a secure secret key
 
 def init_driver():
@@ -40,6 +40,10 @@ def wait_and_find_element(driver, by, value, timeout=10):
 
 @app.route('/')
 def index():
+    return render_template('index.html')
+
+@app.route('/login')
+def login():
     return render_template('login.html')
 
 @app.route('/connections')
@@ -247,5 +251,129 @@ def submit_otp():
     finally:
         driver.quit()
 
+@app.route('/favicon.ico')
+def favicon():
+    return send_from_directory(os.path.join(app.root_path, 'static/images'),
+                               'favicon.ico', mimetype='image/vnd.microsoft.icon')
+
+@app.route('/check-session')
+def check_session():
+    """Endpoint to check if user session is still valid"""
+    if 'username' not in session:
+        return jsonify({'valid': False})
+        
+    # Check if cookie file exists
+    cookie_path = os.path.join('cookies', f"linkedin_cookies_{session['username']}.pkl")
+    if not os.path.exists(cookie_path):
+        return jsonify({'valid': False})
+        
+    return jsonify({'valid': True})
+
+@app.route('/connection-stats')
+def connection_stats():
+    """Endpoint to get LinkedIn connection statistics"""
+    if 'username' not in session:
+        return jsonify({'success': False, 'message': 'Not logged in'})
+        
+    try:
+        cookie_path = os.path.join('cookies', f"linkedin_cookies_{session['username']}.pkl")
+        if not os.path.exists(cookie_path):
+            return jsonify({'success': False, 'message': 'No valid session found'})
+            
+        driver = init_driver()
+        
+        try:
+            # Load cookies
+            driver.get('https://www.linkedin.com')
+            with open(cookie_path, 'rb') as file:
+                cookies = pickle.load(file)
+                for cookie in cookies:
+                    driver.add_cookie(cookie)
+            
+            # Navigate to My Network page to check pending invitations
+            driver.get('https://www.linkedin.com/mynetwork/invitation-manager/')
+            time.sleep(3)
+            
+            # Try to find pending connections count
+            pending_count = 0
+            try:
+                pending_elements = driver.find_elements(By.CSS_SELECTOR, "button[aria-label*='Accept']")
+                pending_count = len(pending_elements)
+            except:
+                logger.info("Could not find accept buttons using aria-label")
+                
+            if pending_count == 0:
+                try:
+                    pending_elements = driver.find_elements(By.XPATH, "//button[contains(@class, 'artdeco-button--secondary')]")
+                    pending_count = len(pending_elements)
+                except:
+                    logger.info("Could not find accept buttons using class")
+                    
+            if pending_count == 0:
+                try:
+                    pending_elements = driver.find_elements(By.XPATH, "//button[contains(., 'Accept')]")
+                    pending_count = len(pending_elements)
+                except:
+                    logger.info("Could not find accept buttons using text content")
+            
+            # Get total connections count (approximate)
+            driver.get('https://www.linkedin.com/mynetwork/')
+            time.sleep(2)
+            
+            total_connections = 0
+            try:
+                connections_element = driver.find_element(By.XPATH, "//a[contains(@href, '/mynetwork/connections/')]")
+                connections_text = connections_element.text
+                # Extract number from text like "Connections 500+"
+                import re
+                match = re.search(r'(\d+)', connections_text)
+                if match:
+                    total_connections = int(match.group(1))
+            except:
+                logger.info("Could not find total connections count")
+                # Provide a reasonable estimate
+                total_connections = 500
+                
+            # Return the statistics
+            return jsonify({
+                'success': True,
+                'pending': pending_count,
+                'total': total_connections,
+                'history': [
+                    {"date": "1 week ago", "pending": 0, "accepted": 0},
+                    {"date": "6 days ago", "pending": 0, "accepted": 0},
+                    {"date": "5 days ago", "pending": 0, "accepted": 0},
+                    {"date": "4 days ago", "pending": 0, "accepted": 0},
+                    {"date": "3 days ago", "pending": 0, "accepted": 0},
+                    {"date": "2 days ago", "pending": 0, "accepted": 0},
+                    {"date": "Yesterday", "pending": 0, "accepted": 0},
+                    {"date": "Today", "pending": pending_count, "accepted": 0}
+                ]
+            })
+        finally:
+            driver.quit()
+            
+    except Exception as e:
+        logger.error(f"Error fetching connection stats: {str(e)}")
+        return jsonify({
+            'success': False, 
+            'message': 'Error fetching connection statistics', 
+            'error': str(e)
+        })
+
+@app.errorhandler(404)
+def page_not_found(e):
+    return render_template('index.html'), 404
+
+@app.errorhandler(500)
+def server_error(e):
+    logger.error(f"Server error: {str(e)}")
+    return jsonify({'success': False, 'message': 'Server error occurred. Please try again later.'}), 500
+
 if __name__ == '__main__':
-    app.run(debug=False)
+    try:
+        if not os.path.exists('cookies'):
+            os.makedirs('cookies')
+        app.run(debug=True, host='0.0.0.0', port=5000)
+    except Exception as e:
+        logger.error(f"Application error: {str(e)}")

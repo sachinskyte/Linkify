@@ -1,111 +1,184 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <title>LinkedIn Login</title>
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-            font-family: 'Arial', sans-serif;
-        }
+{% extends "base.html" %}
 
-        body {
-            background: linear-gradient(135deg, #1a1a1a 0%, #000000 100%);
-            min-height: 100vh;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            color: white;
-        }
+{% block title %}Login - Linkify{% endblock %}
 
-        .login-container {
-            background: rgba(30, 30, 30, 0.85);
-            border-radius: 15px;
-            border: 2px solid #ff0000;
-            width: 400px;
-            padding: 40px;
-        }
-
-        .login-input {
-            width: 100%;
-            padding: 12px;
-            margin: 10px 0;
-            background: rgba(20, 20, 20, 0.8);
-            border: 2px solid #ff0000;
-            color: white;
-            border-radius: 8px;
-        }
-
-        .login-button {
-            width: 100%;
-            padding: 15px;
-            margin-top: 20px;
-            background: linear-gradient(45deg, #ff0000, #8B0000);
-            color: white;
-            border: none;
-            border-radius: 8px;
-            cursor: pointer;
-            text-transform: uppercase;
-            letter-spacing: 1px;
-        }
-
-        #result {
-            margin-top: 20px;
-            text-align: center;
-            color: #ff0000;
-        }
-
-        .title {
-            color: #ff0000;
-            margin-bottom: 30px;
-            font-size: 2rem;
-            text-transform: uppercase;
-            letter-spacing: 2px;
-            text-align: center;
-        }
-    </style>
-</head>
-<body>
-    <div class="login-container">
-        <h2 class="title">LinkedIn Login</h2>
-        <form id="loginForm">
-            <input type="email" name="username" class="login-input" placeholder="LinkedIn Email" required>
-            <input type="password" name="password" class="login-input" placeholder="Password" required>
-            <button type="submit" class="login-button">Login</button>
-        </form>
-        <div id="result"></div>
+{% block content %}
+<div class="card">
+    <h2 class="card-title">Login</h2>
+    <p class="login-subtitle">Enter your LinkedIn credentials</p>
+    
+    <form id="loginForm" class="login-form">
+        <div class="form-group">
+            <div class="input-icon-wrapper">
+                <i class="fas fa-envelope input-icon"></i>
+                <input type="email" name="username" class="form-input" placeholder="LinkedIn Email" required
+                       autocomplete="email">
+            </div>
+        </div>
+        
+        <div class="form-group">
+            <div class="input-icon-wrapper">
+                <i class="fas fa-lock input-icon"></i>
+                <input type="password" name="password" class="form-input" placeholder="Password" required
+                       autocomplete="current-password">
+                <button type="button" id="togglePassword" class="toggle-password">
+                    <i class="fas fa-eye"></i>
+                </button>
+            </div>
+        </div>
+        
+        <div class="form-group">
+            <button type="submit" class="btn btn-primary">
+                <i class="fas fa-sign-in-alt"></i> Login
+            </button>
+        </div>
+    </form>
+    
+    <div id="result" class="result"></div>
+    
+    <div class="security-note">
+        <i class="fas fa-shield-alt"></i>
+        <p>Your credentials are securely stored locally and used only to access your LinkedIn account.</p>
     </div>
+</div>
+{% endblock %}
 
-    <script>
-        document.getElementById('loginForm').addEventListener('submit', function(e) {
-            e.preventDefault();
-            const formData = new FormData(this);
-            const resultDiv = document.getElementById('result');
-            resultDiv.textContent = 'Logging in...';
-            
-            fetch('/submit-password', {  // Changed from /login to /submit-password
-                method: 'POST',
-                body: formData
-            })
-            .then(response => response.json())
-            .then(data => {
-                if (data.success) {
-                    resultDiv.textContent = 'Login successful! Redirecting to OTP verification...';
-                    setTimeout(() => {
-                        window.location.href = '/otp';
-                    }, 1500);
-                } else {
-                    resultDiv.textContent = data.message || 'Login failed. Please check your credentials.';
-                }
-            })
-            .catch(error => {
-                resultDiv.textContent = 'An error occurred. Please try again.';
-                console.error('Error:', error);
-            });
+{% block extra_css %}
+<style>
+    .login-subtitle {
+        color: var(--accent-grey);
+        margin-bottom: 25px;
+    }
+    
+    .login-form {
+        width: 100%;
+        max-width: 500px;
+        margin: 0 auto;
+    }
+    
+    .form-group {
+        margin-bottom: 20px;
+        position: relative;
+    }
+    
+    .input-icon-wrapper {
+        position: relative;
+    }
+    
+    .input-icon {
+        position: absolute;
+        left: 12px;
+        top: 14px;
+        color: var(--primary-red);
+    }
+    
+    .form-input {
+        padding-left: 40px;
+    }
+    
+    .toggle-password {
+        position: absolute;
+        right: 12px;
+        top: 12px;
+        background: transparent;
+        border: none;
+        color: var(--accent-grey);
+        cursor: pointer;
+    }
+    
+    .security-note {
+        margin-top: 25px;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        font-size: 0.8rem;
+        color: var(--accent-grey);
+        text-align: left;
+        padding: 10px 15px;
+        background: rgba(0, 0, 0, 0.3);
+        border-radius: var(--border-radius-sm);
+    }
+    
+    .security-note i {
+        color: var(--primary-red);
+        font-size: 1.2rem;
+    }
+    
+    @media (min-width: 768px) {
+        .login-form {
+            max-width: 400px;
+        }
+    }
+</style>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    document.getElementById('loginForm').addEventListener('submit', function(e) {
+        e.preventDefault();
+        
+        // Client-side validation
+        const email = this.querySelector('input[name="username"]');
+        const password = this.querySelector('input[name="password"]');
+        let isValid = true;
+        
+        if (!email.value.trim()) {
+            isValid = false;
+            email.classList.add('error');
+        } else {
+            email.classList.remove('error');
+        }
+        
+        if (!password.value.trim()) {
+            isValid = false;
+            password.classList.add('error');
+        } else {
+            password.classList.remove('error');
+        }
+        
+        if (!isValid) {
+            return false;
+        }
+        
+        const formData = new FormData(this);
+        const resultDiv = document.getElementById('result');
+        resultDiv.textContent = 'Logging in...';
+        
+        // Disable button and show loading state
+        const submitButton = this.querySelector('button[type="submit"]');
+        const originalText = submitButton.innerHTML;
+        submitButton.disabled = true;
+        submitButton.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Logging in...';
+        
+        fetch('/submit-password', {
+            method: 'POST',
+            body: formData
+        })
+        .then(response => {
+            if (!response.ok) {
+                throw new Error('Network response was not ok');
+            }
+            return response.json();
+        })
+        .then(data => {
+            if (data.success) {
+                resultDiv.innerHTML = '<i class="fas fa-check-circle"></i> Login successful! Redirecting...';
+                resultDiv.style.color = '#4CAF50';
+                setTimeout(() => {
+                    window.location.href = data.redirect || '/connections';
+                }, 1500);
+            } else {
+                resultDiv.innerHTML = '<i class="fas fa-exclamation-circle"></i> ' + (data.message || 'Login failed. Please check your credentials.');
+                submitButton.disabled = false;
+                submitButton.innerHTML = originalText;
+            }
+        })
+        .catch(error => {
+            resultDiv.innerHTML = '<i class="fas fa-exclamation-triangle"></i> An error occurred. Please try again.';
+            submitButton.disabled = false;
+            submitButton.innerHTML = originalText;
+            console.error('Error:', error);
         });
-    </script>
-</body>
-</html>
+    });
+</script>
+{% endblock %}

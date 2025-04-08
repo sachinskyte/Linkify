@@ -173,7 +173,7 @@ def handle_otp_step(driver, otp):
 
 @app.route('/')
 def index():
-    return render_template('password_page.html')
+    return render_template('login.html')
 
 @app.route('/submit-password', methods=['POST'])
 def submit_password():
