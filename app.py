@@ -4,7 +4,7 @@ from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.common.exceptions import TimeoutException, ElementClickInterceptedException
-from flask import Flask, render_template, request, jsonify, session, redirect, url_for, send_from_directory
+from flask import Flask, render_template, request, jsonify, session, redirect, url_for, send_from_directory, flash
 import time
 import logging
 import pickle
@@ -46,10 +46,17 @@ def index():
 def login():
     return render_template('login.html')
 
+@app.route('/logout')
+def logout():
+    session.clear()
+    flash('You have been logged out.', 'info')
+    return redirect(url_for('login'))
+
 @app.route('/connections')
 def connections():
     if 'username' not in session:
-        return redirect(url_for('index'))
+        flash('Please log in to manage your connections.', 'warning')
+        return redirect(url_for('login'))
     return render_template('connections.html')
 
 @app.route('/process-connections', methods=['POST'])
@@ -173,7 +180,19 @@ def submit_password():
         sign_in_button.click()
 
         time.sleep(3)
-        
+
+        # Check for login error (invalid credentials)
+        error_element = None
+        try:
+            error_element = driver.find_element(By.CSS_SELECTOR, '.alert.error, .form__error, .alert-content, .form__label--error')
+        except Exception:
+            pass
+        if error_element and error_element.is_displayed():
+            return jsonify({'success': False, 'message': error_element.text or 'Invalid username or password.'})
+        # Also check for URL not changing from login page
+        if 'login' in driver.current_url:
+            return jsonify({'success': False, 'message': 'Invalid username or password.'})
+
         session['username'] = username
         session['password'] = password
         session['cookies'] = driver.get_cookies()
@@ -294,27 +313,32 @@ def connection_stats():
             driver.get('https://www.linkedin.com/mynetwork/invitation-manager/')
             time.sleep(3)
             
-            # Try to find pending connections count
-            pending_count = 0
-            try:
-                pending_elements = driver.find_elements(By.CSS_SELECTOR, "button[aria-label*='Accept']")
-                pending_count = len(pending_elements)
-            except:
-                logger.info("Could not find accept buttons using aria-label")
-                
-            if pending_count == 0:
-                try:
-                    pending_elements = driver.find_elements(By.XPATH, "//button[contains(@class, 'artdeco-button--secondary')]")
-                    pending_count = len(pending_elements)
-                except:
-                    logger.info("Could not find accept buttons using class")
-                    
-            if pending_count == 0:
-                try:
-                    pending_elements = driver.find_elements(By.XPATH, "//button[contains(., 'Accept')]")
-                    pending_count = len(pending_elements)
-                except:
-                    logger.info("Could not find accept buttons using text content")
+            # Improved: Scroll until no new Accept buttons appear
+            max_scrolls = 20
+            last_count = -1
+            pending_buttons = set()
+            for _ in range(max_scrolls):
+                # Use a robust selector for Accept buttons
+                accept_buttons = driver.find_elements(By.XPATH, "//button[contains(@aria-label, 'Accept') or contains(text(), 'Accept') or contains(@class, 'artdeco-button--secondary')]")
+                # Use the parent invitation card's data-id or href as a unique key if possible
+                for btn in accept_buttons:
+                    try:
+                        parent = btn.find_element(By.XPATH, './ancestor::li[contains(@data-id, "invitation")]')
+                        unique_id = parent.get_attribute('data-id')
+                        if unique_id:
+                            pending_buttons.add(unique_id)
+                        else:
+                            pending_buttons.add(btn)
+                    except Exception:
+                        pending_buttons.add(btn)
+                # Scroll to bottom
+                driver.execute_script("window.scrollTo(0, document.body.scrollHeight);")
+                time.sleep(2.5)
+                # Wait for new elements to load
+                if len(pending_buttons) == last_count:
+                    break
+                last_count = len(pending_buttons)
+            pending_count = len(pending_buttons)
             
             # Get total connections count (approximate)
             driver.get('https://www.linkedin.com/mynetwork/')
@@ -324,16 +348,14 @@ def connection_stats():
             try:
                 connections_element = driver.find_element(By.XPATH, "//a[contains(@href, '/mynetwork/connections/')]")
                 connections_text = connections_element.text
-                # Extract number from text like "Connections 500+"
                 import re
                 match = re.search(r'(\d+)', connections_text)
                 if match:
                     total_connections = int(match.group(1))
             except:
                 logger.info("Could not find total connections count")
-                # Provide a reasonable estimate
                 total_connections = 500
-                
+            
             # Return the statistics
             return jsonify({
                 'success': True,

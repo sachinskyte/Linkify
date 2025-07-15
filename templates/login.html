@@ -4,6 +4,15 @@
 
 {% block content %}
 <div class="card">
+    {% with messages = get_flashed_messages(with_categories=true) %}
+      {% if messages %}
+        <div class="flashes prominent-flash">
+          {% for category, message in messages %}
+            <div class="flash flash-{{ category }}">{{ message }}</div>
+          {% endfor %}
+        </div>
+      {% endif %}
+    {% endwith %}
     <h2 class="card-title">Login</h2>
     <p class="login-subtitle">Enter your LinkedIn credentials</p>
     
@@ -45,37 +54,56 @@
 
 {% block extra_css %}
 <style>
+    .prominent-flash {
+        margin-bottom: 18px;
+        text-align: center;
+    }
+    .flash {
+        display: inline-block;
+        padding: 12px 28px;
+        border-radius: 32px;
+        font-size: 1.1rem;
+        font-weight: 600;
+        margin-bottom: 8px;
+        background: linear-gradient(90deg, #ff512f 0%, #e50914 100%);
+        color: #fff;
+        box-shadow: 0 2px 12px rgba(229, 9, 20, 0.08);
+        border: none;
+    }
+    .flash-info {
+        background: linear-gradient(90deg, #2196f3 0%, #21cbf3 100%);
+    }
+    .flash-warning {
+        background: linear-gradient(90deg, #ff9800 0%, #ff512f 100%);
+    }
+    .flash-error {
+        background: linear-gradient(90deg, #e50914 0%, #b71c1c 100%);
+    }
     .login-subtitle {
         color: var(--accent-grey);
         margin-bottom: 25px;
     }
-    
     .login-form {
         width: 100%;
         max-width: 500px;
         margin: 0 auto;
     }
-    
     .form-group {
         margin-bottom: 20px;
         position: relative;
     }
-    
     .input-icon-wrapper {
         position: relative;
     }
-    
     .input-icon {
         position: absolute;
         left: 12px;
         top: 14px;
         color: var(--primary-red);
     }
-    
     .form-input {
         padding-left: 40px;
     }
-    
     .toggle-password {
         position: absolute;
         right: 12px;
@@ -85,7 +113,6 @@
         color: var(--accent-grey);
         cursor: pointer;
     }
-    
     .security-note {
         margin-top: 25px;
         display: flex;
@@ -98,12 +125,10 @@
         background: rgba(0, 0, 0, 0.3);
         border-radius: var(--border-radius-sm);
     }
-    
     .security-note i {
         color: var(--primary-red);
         font-size: 1.2rem;
     }
-    
     @media (min-width: 768px) {
         .login-form {
             max-width: 400px;
@@ -113,6 +138,7 @@
 {% endblock %}
 
 {% block extra_js %}
+{{ super() }}
 <script>
     document.getElementById('loginForm').addEventListener('submit', function(e) {
         e.preventDefault();

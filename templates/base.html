@@ -37,6 +37,9 @@
                 <a href="/" class="nav-link">Home</a>
                 <a href="/login" class="nav-link">Login</a>
                 <a href="/connections" class="nav-link">Connections</a>
+                {% if session['username'] %}
+                    <a href="/logout" class="nav-link">Logout</a>
+                {% endif %}
             </div>
         </div>
     </nav>
@@ -45,21 +48,59 @@
         {% block content %}{% endblock %}
     </div>
     
-    <footer class="footer">
-        <div class="container-footer">
-            <div class="footer-content">
-                <div class="footer-logo">
-                    <i class="fab fa-linkedin logo-icon"></i> LINKIFY
-                </div>
-                <div class="footer-links">
-                    <a href="/" class="footer-link">Home</a>
-                    <a href="/login" class="footer-link">Login</a>
-                    <a href="/connections" class="footer-link">Connections</a>
-                </div>
-            </div>
-            <p>&copy; 2025 Linkify - LinkedIn Automation Tool | <i class="fas fa-shield-alt"></i> Your data is secure with us</p>
+    <!-- Minimal Footer -->
+    <footer class="footer minimal-footer">
+        <div class="footer-content-minimal">
+            <a href="https://github.com/sachinskyte/linkify.git" class="footer-btn" target="_blank" rel="noopener" title="GitHub">
+                <i class="fab fa-github"></i> GitHub
+            </a>
+            <a href="https://www.linkedin.com/in/sachinskyte/" class="footer-btn" target="_blank" rel="noopener" title="LinkedIn">
+                <i class="fab fa-linkedin"></i> LinkedIn
+            </a>
+            <span class="footer-madeby">Made by Sachin Patel</span>
         </div>
     </footer>
+    <style>
+        .minimal-footer {
+            background: transparent;
+            border-top: 1px solid rgba(229, 9, 20, 0.08);
+            padding: 18px 0 8px 0;
+            text-align: center;
+        }
+        .footer-content-minimal {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 24px;
+            flex-wrap: wrap;
+        }
+        .footer-btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            background: linear-gradient(90deg, #e50914 0%, #ff512f 100%);
+            color: #fff;
+            padding: 8px 20px;
+            border-radius: 24px;
+            font-weight: 600;
+            font-size: 1rem;
+            text-decoration: none;
+            transition: background 0.2s, box-shadow 0.2s;
+            box-shadow: 0 2px 8px rgba(229, 9, 20, 0.08);
+        }
+        .footer-btn:hover {
+            background: linear-gradient(90deg, #ff512f 0%, #e50914 100%);
+            color: #fff;
+        }
+        .footer-btn i {
+            font-size: 1.2rem;
+        }
+        .footer-madeby {
+            color: var(--accent-grey);
+            font-size: 1rem;
+            font-weight: 500;
+        }
+    </style>
     
     <!-- Main JavaScript -->
     <script src="{{ url_for('static', filename='js/main.js') }}"></script>
