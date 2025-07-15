@@ -38,7 +38,7 @@
                 <a href="/login" class="nav-link">Login</a>
                 <a href="/connections" class="nav-link">Connections</a>
                 {% if session['username'] %}
-                    <a href="/logout" class="nav-link">Logout</a>
+                    <button id="deleteLocalDataBtn" class="nav-link nav-btn">Delete Data & logout</button>
                 {% endif %}
             </div>
         </div>
@@ -100,10 +100,51 @@
             font-size: 1rem;
             font-weight: 500;
         }
+        .nav-btn {
+            background: linear-gradient(90deg, #e50914 0%, #ff512f 100%);
+            color: #fff;
+            border: none;
+            border-radius: 20px;
+            padding: 6px 18px;
+            margin-left: 10px;
+            font-weight: 600;
+            font-size: 1rem;
+            cursor: pointer;
+            transition: background 0.2s, box-shadow 0.2s;
+            box-shadow: 0 2px 8px rgba(229, 9, 20, 0.08);
+        }
+        .nav-btn:hover {
+            background: linear-gradient(90deg, #ff512f 0%, #e50914 100%);
+        }
     </style>
     
     <!-- Main JavaScript -->
     <script src="{{ url_for('static', filename='js/main.js') }}"></script>
+    
+    <script>
+    document.addEventListener('DOMContentLoaded', function() {
+        var deleteBtn = document.getElementById('deleteLocalDataBtn');
+        if (deleteBtn) {
+            deleteBtn.addEventListener('click', function(e) {
+                e.preventDefault();
+                if (!confirm('Are you sure you want to delete all local data (cookies) and log out? This cannot be undone.')) return;
+                fetch('/delete-local-data', {
+                    method: 'POST',
+                    headers: { 'X-Requested-With': 'XMLHttpRequest' }
+                })
+                .then(res => res.json())
+                .then(data => {
+                    if (data.success) {
+                        window.location.href = '/login';
+                    } else {
+                        alert(data.message || 'Failed to delete local data.');
+                    }
+                })
+                .catch(() => alert('Failed to delete local data.'));
+            });
+        }
+    });
+    </script>
     
     {% block extra_js %}{% endblock %}
 </body>

@@ -9,6 +9,7 @@ import time
 import logging
 import pickle
 import os
+import shutil
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -382,6 +383,37 @@ def connection_stats():
             'message': 'Error fetching connection statistics', 
             'error': str(e)
         })
+
+@app.route('/delete-local-data', methods=['POST'])
+def delete_local_data():
+    if 'username' not in session:
+        return jsonify({'success': False, 'message': 'Not authorized'}), 401
+    try:
+        cookies_dir = 'cookies'
+        deleted_files = 0
+        errors = []
+        if os.path.exists(cookies_dir):
+            for filename in os.listdir(cookies_dir):
+                if not filename.endswith('.pkl'):
+                    continue
+                file_path = os.path.join(cookies_dir, filename)
+                try:
+                    os.remove(file_path)
+                    deleted_files += 1
+                except Exception as e:
+                    errors.append(f"{filename}: {str(e)}")
+                    continue
+        if errors:
+            logger.error(f"Delete errors: {errors}")
+        session.clear()  # Log out the user after deleting cookies
+        if deleted_files == 0 and not errors:
+            return jsonify({'success': False, 'message': 'No local data files found to delete.'})
+        if errors and deleted_files == 0:
+            return jsonify({'success': False, 'message': f'Failed to delete files: {errors}'})
+        return jsonify({'success': True, 'message': f'Deleted {deleted_files} local data files and logged out.'})
+    except Exception as e:
+        logger.error(f"Delete local data error: {str(e)}")
+        return jsonify({'success': False, 'message': f'Error deleting local data: {str(e)}'}), 500
 
 @app.errorhandler(404)
 def page_not_found(e):
