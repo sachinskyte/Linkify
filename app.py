@@ -19,6 +19,27 @@ logger = logging.getLogger(__name__)
 app = Flask(__name__, static_folder='static')
 app.secret_key = 'your-secret-key-here'  # Replace with a secure secret key
 
+# Configure session for production
+app.config['SESSION_COOKIE_SECURE'] = False  # Set to True in production with HTTPS
+app.config['SESSION_COOKIE_HTTPONLY'] = True
+app.config['SESSION_COOKIE_SAMESITE'] = 'Lax'
+app.config['PERMANENT_SESSION_LIFETIME'] = 3600  # 1 hour
+
+# Add error handling middleware
+@app.before_request
+def before_request():
+    # Ensure cookies directory exists
+    if not os.path.exists('cookies'):
+        os.makedirs('cookies')
+
+@app.after_request
+def after_request(response):
+    # Add security headers
+    response.headers['X-Content-Type-Options'] = 'nosniff'
+    response.headers['X-Frame-Options'] = 'DENY'
+    response.headers['X-XSS-Protection'] = '1; mode=block'
+    return response
+
 def init_driver():
     chrome_options = webdriver.ChromeOptions()
     chrome_options.add_argument('--headless')
@@ -42,6 +63,11 @@ def wait_and_find_element(driver, by, value, timeout=10):
 @app.route('/')
 def index():
     return render_template('index.html')
+
+@app.route('/health')
+def health_check():
+    """Simple health check endpoint"""
+    return jsonify({'status': 'healthy', 'message': 'Linkify is running'})
 
 @app.route('/login')
 def login():
@@ -273,8 +299,7 @@ def submit_otp():
 
 @app.route('/favicon.ico')
 def favicon():
-    return send_from_directory(os.path.join(app.root_path, 'static/images'),
-                               'favicon.ico', mimetype='image/vnd.microsoft.icon')
+    return send_from_directory(app.static_folder, 'favicon.ico', mimetype='image/vnd.microsoft.icon')
 
 @app.route('/check-session')
 def check_session():
@@ -417,12 +442,18 @@ def delete_local_data():
 
 @app.errorhandler(404)
 def page_not_found(e):
+    # Don't redirect to index for API requests
+    if request.path.startswith('/api/') or request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+        return jsonify({'success': False, 'message': 'Endpoint not found'}), 404
     return render_template('index.html'), 404
 
 @app.errorhandler(500)
 def server_error(e):
     logger.error(f"Server error: {str(e)}")
-    return jsonify({'success': False, 'message': 'Server error occurred. Please try again later.'}), 500
+    # Don't return JSON for regular page requests
+    if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+        return jsonify({'success': False, 'message': 'Server error occurred. Please try again later.'}), 500
+    return render_template('index.html'), 500
 
 if __name__ == '__main__':
     try:
